@@ -1,0 +1,19 @@
+{
+  "name": "y",
+  "version": "1.0.0",
+  "description": "EFC Hackday 2020 project aiming to protect consumers from scalpers and hoarders on e-commerce sites",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@git.soma.salesforce.com:m-tiwari/honest-commerce.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "truffle": "^5.1.27",
+    "ganache-cli": "^6.9.1"
+  }
+}
