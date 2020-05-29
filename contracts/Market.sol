@@ -4,19 +4,19 @@ pragma experimental ABIEncoderV2;
 
 contract Market {
     struct Buyer {
-        string id;
+        address id;
         mapping(string => string) orderHistory; // good's Id => time bought
         bool init;
     }
 
     struct Seller {
-        string id;
+        address id;
         bool init;
     }
 
-    mapping(string => Buyer) buyers;
-    mapping(string => Seller) sellers;
-    mapping(string => Seller) verifiedSellers;
+    mapping(address => Buyer) buyers;
+    mapping(address => Seller) sellers;
+    mapping(address => Seller) verifiedSellers;
 
     struct DigitalGood {
         string ticketId;
@@ -44,7 +44,7 @@ contract Market {
     mapping(string => PhysicalGood) physicalGoods;
     mapping(string => uint[]) priceHistories;
 
-    function listDigitalGood(string memory _ticketId, string memory _name, uint _price, string memory sellerId, bool isVerifiedSeller) public {
+    function listDigitalGood(string memory _ticketId, string memory _name, uint _price, address sellerId, bool isVerifiedSeller) public {
         require(_price > 0, "Ticket price cannot be negative or zero");
 
         if (!sellers[sellerId].init) {
@@ -73,21 +73,31 @@ contract Market {
             allocatedIds.push(_ticketId);
             // emit event
         } else {
-            require(redeemedDigitalGoods[_ticketId].init, "Ticket was never redeemed.");
-
-            DigitalGood storage redeemed = redeemedDigitalGoods[_ticketId];
-
-            require(stringsMatch(redeemed.seller.id, sellerId), "Seller ID doesn't match owner's.");
-
+            // require(redeemedDigitalGoods[_ticketId].init, "Ticket was never redeemed.");
             uint originalPrice = originalDigitalGoodPrice[_ticketId];
 
             require(_price <= originalPrice, "Price is above original ticket price.");
+            DigitalGood storage redeemed = redeemedDigitalGoods[_ticketId];
+
+            // require(redeemed.seller.id == sellerId, "Seller ID doesn't match owner's.");
+
+            // uint originalPrice = originalDigitalGoodPrice[_ticketId];
+
+            // require(_price <= originalPrice, "Price is above original ticket price.");
+
+            DigitalGood memory next = DigitalGood({
+                ticketId: redeemed.ticketId,
+                name: redeemed.name,
+                price: _price,
+                seller: sellers[sellerId],
+                init: true
+            });
 
             delete redeemedDigitalGoods[_ticketId];
 
-            redeemed.price = _price;
+            // redeemed.price = _price;
 
-            allocatedDigitalGoods[_ticketId] = redeemed;
+            allocatedDigitalGoods[redeemed.ticketId] = next;
             allocatedIds.push(_ticketId);
 
             // emit event
@@ -98,7 +108,7 @@ contract Market {
         return priceHistories[sku];
     }
 
-    function listPhysicalGood(string memory _sku, string memory _name, uint _price, uint _quantity, string memory sellerId, bool isVerifiedSeller, bool isFairPrice) public {
+    function listPhysicalGood(string memory _sku, string memory _name, uint _price, uint _quantity, address sellerId, bool isVerifiedSeller, bool isFairPrice) public {
         require(_price > 0, "Item price cannot be negative or zero");
         require(_quantity > 0, "Item quantity cannot be negative or zero");
 
@@ -114,51 +124,81 @@ contract Market {
             sellers[sellerId] = _seller;
         }
 
-        if (physicalGoods[_sku].init) { // the physical good has been seen
-            PhysicalGood storage item = physicalGoods[_sku];
-            require(item.price == _price, "Cannot change the price of an existing good.");
-            require(stringsMatch(item.seller.id, sellerId), "A different seller cannot sell the same item.");
-            item.quantity += _quantity;
+        if (isVerifiedSeller) {
+            PhysicalGood memory item = PhysicalGood({
+                sku: _sku,
+                name: _name,
+                price: _price,
+                quantity: _quantity,
+                seller: sellers[sellerId],
+                init: true
+            });
 
-            // emit event
+            priceHistories[_sku].push(_price);
+            physicalGoods[_sku] = item;
+            skus.push(_sku);
         } else {
-            if (isVerifiedSeller) {
-                PhysicalGood memory item = PhysicalGood({
-                    sku: _sku,
-                    name: _name,
-                    price: _price,
-                    quantity: _quantity,
-                    seller: sellers[sellerId],
-                    init: true
-                });
-
-                priceHistories[_sku].push(_price);
-                physicalGoods[_sku] = item;
-                skus.push(_sku);
-
-                // emit event
-            } else {
-                require(isFairPrice, "Price is too high to be fair.");
+            require(isFairPrice , "Price is too high to be fair.");
                 
-                PhysicalGood memory item = PhysicalGood({
-                    sku: _sku,
-                    name: _name,
-                    price: _price,
-                    quantity: _quantity,
-                    seller: sellers[sellerId],
-                    init: true
-                });
+            PhysicalGood memory item = PhysicalGood({
+                sku: _sku,
+                name: _name,
+                price: _price,
+                quantity: _quantity,
+                seller: sellers[sellerId],
+                init: true
+            });
 
-                physicalGoods[_sku] = item;
-                skus.push(_sku);
-                // emit event
-            }
+            physicalGoods[_sku] = item;
+            skus.push(_sku);
+            // emit event
         }
+
+        // if (physicalGoods[_sku].init) { // the physical good has been seen
+        //     PhysicalGood storage item = physicalGoods[_sku];
+        //     require(item.price == _price, "Cannot change the price of an existing good.");
+        //     require(stringsMatch(item.seller.id, sellerId), "A different seller cannot sell the same item.");
+        //     item.quantity += _quantity;
+
+        //     // emit event
+        // } else {
+        //     if (isVerifiedSeller) {
+        //         PhysicalGood memory item = PhysicalGood({
+        //             sku: _sku,
+        //             name: _name,
+        //             price: _price,
+        //             quantity: _quantity,
+        //             seller: sellers[sellerId],
+        //             init: true
+        //         });
+
+        //         priceHistories[_sku].push(_price);
+        //         physicalGoods[_sku] = item;
+        //         skus.push(_sku);
+
+        //         // emit event
+        //     } else {
+        //         require(isFairPrice, "Price is too high to be fair.");
+                
+        //         PhysicalGood memory item = PhysicalGood({
+        //             sku: _sku,
+        //             name: _name,
+        //             price: _price,
+        //             quantity: _quantity,
+        //             seller: sellers[sellerId],
+        //             init: true
+        //         });
+
+        //         physicalGoods[_sku] = item;
+        //         skus.push(_sku);
+        //         // emit event
+        //     }
+        // }
     }
 
-    function buyDigitalGood(string memory ticketId, string memory buyerId, string memory time) public {
-        require(!allocatedDigitalGoods[ticketId].init, "Ticket was never allocated.");
-        require(!redeemedDigitalGoods[ticketId].init, "Ticket was already redeemed.");
+    function buyDigitalGood(string memory ticketId, address buyerId, string memory time) public {
+        // require(!allocatedDigitalGoods[ticketId].init, "Ticket was never allocated.");
+        // require(!redeemedDigitalGoods[ticketId].init, "Ticket was already redeemed.");
 
         if (buyers[buyerId].init) {
             redeemedDigitalGoods[ticketId] = allocatedDigitalGoods[ticketId];
@@ -191,7 +231,7 @@ contract Market {
         }
     }
 
-    function buyPhysicalGood(string memory sku, uint quantity, string memory buyerId, string memory time) public {
+    function buyPhysicalGood(string memory sku, uint quantity, address buyerId, string memory time) public {
         require(quantity > 0, "Quantity cannot be negative or zero.");
         require(quantity <= 2, "Please take less than 2 items.");
 
@@ -276,7 +316,7 @@ contract Market {
         return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b)); // as specified with stack overflow
     }
 
-    function getBuyerHistory(string memory sku, string memory buyerId) public returns(string memory) {
+    function getBuyerHistory(string memory sku, address buyerId) public returns(string memory) {
         require(buyers[buyerId].init, "Buyer doesn't exist.");
 
         return buyers[buyerId].orderHistory[sku];

@@ -1,4 +1,4 @@
-import json
+import json, sys
 from web3 import Web3
 from flask import Flask, request, jsonify
 import numpy as np
@@ -8,6 +8,11 @@ app = Flask(__name__)
 
 w3 = Web3(Web3.HTTPProvider('http://127.0.0.1:8545')) # points to the URL provided by Ganache
 w3.eth.defaultAccount = w3.eth.accounts[0]
+
+account_map = {
+    'baddamanu@yahoo.com': w3.eth.accounts[1],
+    'Anurag': w3.eth.accounts[1]
+}
 
 with open('./build/contracts/Market.json', 'r') as f:
     truffle_file = json.load(f)
@@ -35,6 +40,11 @@ def is_fair_price(sku, price):
 
     mean = np.mean(price_history)
     std_dev = np.std(price_history)
+
+    print('price_history: ' + str(price_history))
+    print('price: ' + str(price))
+    print('mean: ' + str(mean))
+    print('std_dev: ' + str(std_dev))
 
     return price <= mean + 1.5 * std_dev
 
@@ -66,14 +76,21 @@ def listing():
         seller_id = request.args.get('sellerId')
         is_verified_seller = bool(request.args.get('isVerifiedSeller'))
 
-        tx_hash = item.functions.listDigitalGood(
-            ticket_id, 
-            item_name,
-            price,
-            seller_id,
-            is_verified_seller).transact()
+        try :
+            tx_hash = item.functions.listDigitalGood(
+                ticket_id, 
+                item_name,
+                price,
+                account_map[seller_id],
+                is_verified_seller).transact()
 
-        w3.eth.waitForTransactionReceipt(tx_hash)
+            w3.eth.waitForTransactionReceipt(tx_hash)
+
+            return jsonify({'data': 'worked'}), 200
+        except ValueError as e:
+            print(e.__dict__)
+            return jsonify({'data': str(e)}), 200
+        
     else:
         sku = request.args.get('sku')
         item_name = request.args.get('name')
@@ -82,6 +99,25 @@ def listing():
         seller_id = request.args.get('sellerId')
         is_verified_seller = bool(request.args.get('isVerifiedSeller'))
         fair_price = bool(is_fair_price(sku, price))
+
+        # item = w3.eth.contract(address=contract_address, abi=abi)
+
+        # price_history = item.functions.priceHistory(sku).call()
+
+        # max_price = np.max(price_history)
+
+        # mean = np.mean(price_history)
+        # std_dev = np.std(price_history)
+
+        # app.logger.info('price_history: ' + str(price_history))
+        # print('price: ' + str(price))
+        # print('mean: ' + str(mean))
+        # print('std_dev: ' + str(std_dev))
+
+        # print("fair_price: " + str(fair_price))
+
+        if not fair_price and not is_verified_seller:
+            return jsonify({'data': 'does not work'}), 200
 
         tx_hash = item.functions.listPhysicalGood(
             sku, 
@@ -112,7 +148,7 @@ def buy():
 
         tx_hash = item.functions.buyDigitalGood(
             ticket_id, 
-            buyer_id,
+            account_map[buyer_id],
             curr_time).transact()
 
         w3.eth.waitForTransactionReceipt(tx_hash)
@@ -120,6 +156,7 @@ def buy():
         sku = request.args.get('sku')
         quantity = int(request.args.get('quantity'))
         buyer_id = request.args.get('buyerId')
+        item_name = request.args.get('name')
 
         if is_hoarding(sku, buyer_id):
             return jsonify({'data': 'none'}), 200
@@ -128,6 +165,7 @@ def buy():
             sku,
             quantity,
             buyer_id,
+            item_name,
             curr_time).transact()
 
         w3.eth.waitForTransactionReceipt(tx_hash)
