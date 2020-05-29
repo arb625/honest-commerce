@@ -17,6 +17,7 @@ window.onload = function() {
                 }
             });
             const myJson = await response.json(); //extract JSON from the http response
+            debugger
             // do something with myJson
         }
 
@@ -45,7 +46,7 @@ window.onload = function() {
                     body = {
                         "category": category,
                         "ticketId": upc,
-                        "name": name,
+                        "name": itemName,
                         "price": price,
                         "sellerId": sellerId,
                         "isVerifiedSeller": false,
@@ -54,11 +55,11 @@ window.onload = function() {
                     body = {
                         "category": category,
                         "sku": upc,
-                        "name": name,
+                        "name": itemName,
                         "price": price,
                         "quantity": quantity,
                         "sellerId": sellerId,
-                        "isVerifiedSeller": false,
+                        "isVerifiedSeller": false,    // SET HERE!!!!!!!!!
                     }
                 }
 
@@ -67,20 +68,20 @@ window.onload = function() {
 
             }
 
-            var listButton = document.getElementById("wc0-w0-LIST_PAGE_WRAPPER__-CTA__-CTA_VIEW__-listItCallToAction__")
+            var listButton = document.getElementById("wc0-w0-LIST_PAGE_WRAPPER__-CTA__-CTA_VIEW__-listItCallToAction__");
             
-            var newButton = document.createElement("BUTTON")
-            newButton.id = "new_button"
-            newButton.type = "button"
-            newButton.style.height = "40px"
-            newButton.style.width = "450px"
-            newButton.style.backgroundColor = "orange"
+            var newButton = document.createElement("BUTTON");
+            newButton.id = "new_button";
+            newButton.type = "button";
+            newButton.style.height = "40px";
+            newButton.style.width = "450px";
+            newButton.style.backgroundColor = "orange";
             newButton.innerText = "List!"
-            newButton.addEventListener("click", sendListPostRequest)
-            console.log("added listener")
+            newButton.addEventListener("click", sendListPostRequest);
+            console.log("added listener");
             
             listButton.parentNode.replaceChild(newButton, listButton);
-            console.log("replaced")
+            console.log("replaced");
             
         }
 
@@ -106,13 +107,14 @@ window.onload = function() {
                 } else if (category === "physical") {
                     body = {
                         "category": category,
+                        "name": itemName,
                         "sku": upc,
                         "quantity": quantity,
                         "buyerId": buyerId,
                     }
                 }
 
-                sendPostRequest("/buy", body)
+                var json = sendPostRequest("/buy", body)
 
             }
 
@@ -134,6 +136,6 @@ window.onload = function() {
         }
 
 
-    }, 5000)
+    }, 10000)
 
 }
