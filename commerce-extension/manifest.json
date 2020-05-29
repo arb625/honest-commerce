@@ -3,7 +3,7 @@
 	"version": "1.0",
 	"description": "Runs smart contracts on Ebay's platform",
     "content_scripts": [{
-    	"matches": ["https://www.ebay.com/"],
+    	"matches": ["https://www.ebay.com/*"],
     	"js": ["myscript.js"]
     }],
 	"manifest_version": 2

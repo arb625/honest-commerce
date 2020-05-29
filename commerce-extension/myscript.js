@@ -1,8 +1,10 @@
 
 window.onload = function() {
     setTimeout(function() {
+        console.log("started")
 
         if (document.title.indexOf("Sell on eBay") != -1) {
+            console.log("inside")
 
             function sendListPostRequest() {
 
@@ -15,7 +17,7 @@ window.onload = function() {
                 var quantity = Number(document.getElementById("wc0-w0-LIST_PAGE_WRAPPER__-PRICE_VIEW__-PRICE_DETAIL_VIEW__-priceMoreOptions__-PRICE_MORE_OPTIONS_GROUP__-quantitySelection__-quantity__-textbox").value)
                 var sellerId = document.getElementById("wc0-w0-LIST_PAGE_WRAPPER__-LISTING_PREFERENCES_OVERLAY__-w0-paypalEmailAddress__-valueSelect-w2").innerText
 
-                if (category.equals("digital")) {
+                if (category === "digital") {
                     body = {
                         "category": category,
                         "ticketId": upc,
@@ -24,7 +26,7 @@ window.onload = function() {
                         "sellerId": sellerId,
                         "isVerifiedSeller": false,
                     }
-                } else if (category.equals("physical")) {
+                } else if (category === "physical") {
                     body = {
                         "category": category,
                         "sku": upc,
@@ -59,8 +61,20 @@ window.onload = function() {
                 // do something with myJson
             }
 
-            var listButton = document.getElemenyById("wc0-w0-LIST_PAGE_WRAPPER__-CTA__-CTA_VIEW__-listItCallToAction__")
-            listButton.addEventListener("click", sendListPostRequest)
+            var listButton = document.getElementById("wc0-w0-LIST_PAGE_WRAPPER__-CTA__-CTA_VIEW__-listItCallToAction__")
+            
+            var newButton = document.createElement("BUTTON")
+            newButton.id = "new_button"
+            newButton.style.height = "40px"
+            newButton.style.width = "450px"
+            newButton.style.backgroundColor = "orange"
+            newButton.innerText = "List!"
+            newButton.addEventListener("click", sendListPostRequest)
+            console.log("added listener")
+            
+            listButton.parentNode.replaceChild(newButton, listButton);
+            console.log("replaced")
+            
         }
     }, 5000)
 
