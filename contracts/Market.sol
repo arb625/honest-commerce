@@ -4,19 +4,19 @@ pragma experimental ABIEncoderV2;
 
 contract Market {
     struct Buyer {
-        address id;
+        string id;
         mapping(string => string) orderHistory; // good's Id => time bought
         bool init;
     }
 
     struct Seller {
-        address id;
+        string id;
         bool init;
     }
 
-    mapping(address => Buyer) buyers;
-    mapping(address => Seller) sellers;
-    mapping(address => Seller) verifiedSellers;
+    mapping(string => Buyer) buyers;
+    mapping(string => Seller) sellers;
+    mapping(string => Seller) verifiedSellers;
 
     struct DigitalGood {
         string ticketId;
@@ -44,7 +44,7 @@ contract Market {
     mapping(string => PhysicalGood) physicalGoods;
     mapping(string => uint[]) priceHistories;
 
-    function listDigitalGood(string memory _ticketId, string memory _name, uint _price, address sellerId, bool isVerifiedSeller) public {
+    function listDigitalGood(string memory _ticketId, string memory _name, uint _price, string memory sellerId, bool isVerifiedSeller) public {
         require(_price > 0, "Ticket price cannot be negative or zero");
 
         if (!sellers[sellerId].init) {
@@ -77,7 +77,7 @@ contract Market {
 
             DigitalGood storage redeemed = redeemedDigitalGoods[_ticketId];
 
-            require(redeemed.seller.id == sellerId, "Seller ID doesn't match owner's.");
+            require(stringsMatch(redeemed.seller.id, sellerId), "Seller ID doesn't match owner's.");
 
             uint originalPrice = originalDigitalGoodPrice[_ticketId];
 
@@ -98,8 +98,9 @@ contract Market {
         return priceHistories[sku];
     }
 
-    function listPhysicalGood(string memory _sku, string memory _name, uint _price, uint _quantity, address sellerId, bool isVerifiedSeller, bool isFairPrice) public {
+    function listPhysicalGood(string memory _sku, string memory _name, uint _price, uint _quantity, string memory sellerId, bool isVerifiedSeller, bool isFairPrice) public {
         require(_price > 0, "Item price cannot be negative or zero");
+        require(_quantity > 0, "Item quantity cannot be negative or zero");
 
         if (!sellers[sellerId].init) {
             Seller memory _seller = Seller({
@@ -116,7 +117,7 @@ contract Market {
         if (physicalGoods[_sku].init) { // the physical good has been seen
             PhysicalGood storage item = physicalGoods[_sku];
             require(item.price == _price, "Cannot change the price of an existing good.");
-            require(item.seller.id == sellerId, "A different seller cannot sell the same item.");
+            require(stringsMatch(item.seller.id, sellerId), "A different seller cannot sell the same item.");
             item.quantity += _quantity;
 
             // emit event
@@ -155,13 +156,14 @@ contract Market {
         }
     }
 
-    function buyDigitalGood(string memory ticketId, address buyerId, string memory time) public {
+    function buyDigitalGood(string memory ticketId, string memory buyerId, string memory time) public {
         require(!allocatedDigitalGoods[ticketId].init, "Ticket was never allocated.");
         require(!redeemedDigitalGoods[ticketId].init, "Ticket was already redeemed.");
 
         if (buyers[buyerId].init) {
             redeemedDigitalGoods[ticketId] = allocatedDigitalGoods[ticketId];
             delete allocatedDigitalGoods[ticketId];
+            removeFromAllocatedIds(ticketId);
 
             redeemedDigitalGoods[ticketId].seller = Seller({
                 id: buyerId,
@@ -180,11 +182,127 @@ contract Market {
 
             redeemedDigitalGoods[ticketId] = allocatedDigitalGoods[ticketId];
             delete allocatedDigitalGoods[ticketId];
+            removeFromAllocatedIds(ticketId);
 
             redeemedDigitalGoods[ticketId].seller = Seller({
                 id: buyerId,
                 init: true
             });
         }
+    }
+
+    function buyPhysicalGood(string memory sku, uint quantity, string memory buyerId, string memory time) public {
+        require(quantity > 0, "Quantity cannot be negative or zero.");
+        require(quantity <= 2, "Please take less than 2 items.");
+
+        if (buyers[buyerId].init) {
+            PhysicalGood storage good = physicalGoods[sku];
+            require(good.quantity >= quantity, "Buying too much quantity");
+            
+            if (good.quantity == quantity) {
+                delete physicalGoods[sku];
+                delete priceHistories[sku];
+                removeFromSkus(sku);
+            } else {
+                good.quantity -= quantity;
+            }
+
+            Buyer storage buyer = buyers[buyerId];
+            buyer.orderHistory[sku] = time;
+        } else {
+            PhysicalGood storage good = physicalGoods[sku];
+            require(good.quantity >= quantity, "Buying too much quantity");
+            
+            if (good.quantity == quantity) {
+                delete physicalGoods[sku];
+                delete priceHistories[sku];
+                removeFromSkus(sku);
+            } else {
+                good.quantity -= quantity;
+            }
+
+            buyers[buyerId] = Buyer({
+                id: buyerId,
+                init: true
+            });
+
+            buyers[buyerId].orderHistory[sku] = time;
+        }
+    }
+
+    function removeFromAllocatedIds(string memory toDelete) public {
+        uint ind = 0;
+        bool found = false;
+        for (uint i = 0; i < allocatedIds.length; i++) {
+            if (stringsMatch(allocatedIds[i], toDelete)) {
+                ind = i;
+                found = true;
+                break;
+            }
+        }
+
+        if (found) {
+            for (uint i = ind; i < allocatedIds.length - 1; i++) {
+                allocatedIds[i] = allocatedIds[i + 1];
+            }
+
+            delete allocatedIds[allocatedIds.length - 1];
+            allocatedIds.length--;
+        }
+    }
+
+    function removeFromSkus(string memory toDelete) public {
+        uint ind = 0;
+        bool found = false;
+        for (uint i = 0; i < skus.length; i++) {
+            if (stringsMatch(skus[i], toDelete)) {
+                ind = i;
+                found = true;
+                break;
+            }
+        }
+
+        if (found) {
+            for (uint i = ind; i < skus.length - 1; i++) {
+                skus[i] = skus[i + 1];
+            }
+
+            delete skus[skus.length - 1];
+            skus.length--;
+        }
+    }
+
+    function stringsMatch(string memory a, string memory b) public returns(bool) {
+        return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b)); // as specified with stack overflow
+    }
+
+    function getBuyerHistory(string memory sku, string memory buyerId) public returns(string memory) {
+        require(buyers[buyerId].init, "Buyer doesn't exist.");
+
+        return buyers[buyerId].orderHistory[sku];
+    }
+
+    function getDigitalGoods() public returns(string[] memory, string[] memory) {
+        string[] memory ids = new string[](allocatedIds.length);
+        string[] memory names = new string[](allocatedIds.length);
+
+        for (uint i = 1; i < allocatedIds.length; i++) {
+            ids[i] = allocatedIds[i];
+            names[i] = allocatedDigitalGoods[allocatedIds[i]].name;
+        }
+
+        return (allocatedIds, names);
+    }
+
+    function getPhysicalGoods() public returns(string[] memory, string[] memory) {
+        string[] memory ids = new string[](skus.length);
+        string[] memory names = new string[](skus.length);
+
+        for (uint i = 1; i < skus.length; i++) {
+            ids[i] = skus[i];
+            names[i] = physicalGoods[skus[i]].name;
+        }
+
+        return (skus, names);
     }
 }
