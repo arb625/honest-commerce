@@ -1,10 +1,12 @@
 import json
 from web3 import Web3
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import numpy as np
 from datetime import datetime
 
 app = Flask(__name__)
+CORS(app)
 
 w3 = Web3(Web3.HTTPProvider('http://127.0.0.1:8545')) # points to the URL provided by Ganache
 w3.eth.defaultAccount = w3.eth.accounts[0]
