@@ -1,0 +1,1 @@
+Chrome extension that runs our smart contracts code in the Ebay buy/sell workflow.
