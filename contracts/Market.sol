@@ -283,11 +283,9 @@ contract Market {
     }
 
     function getDigitalGoods() public returns(string[] memory, string[] memory) {
-        string[] memory ids = new string[](allocatedIds.length);
         string[] memory names = new string[](allocatedIds.length);
 
-        for (uint i = 1; i < allocatedIds.length; i++) {
-            ids[i] = allocatedIds[i];
+        for (uint i = 0; i < allocatedIds.length; i++) {
             names[i] = allocatedDigitalGoods[allocatedIds[i]].name;
         }
 
@@ -295,11 +293,9 @@ contract Market {
     }
 
     function getPhysicalGoods() public returns(string[] memory, string[] memory) {
-        string[] memory ids = new string[](skus.length);
         string[] memory names = new string[](skus.length);
 
-        for (uint i = 1; i < skus.length; i++) {
-            ids[i] = skus[i];
+        for (uint i = 0; i < skus.length; i++) {
             names[i] = physicalGoods[skus[i]].name;
         }
 
