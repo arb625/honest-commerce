@@ -1,17 +1,19 @@
 import json, sys
 from web3 import Web3
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import numpy as np
 from datetime import datetime
 
 app = Flask(__name__)
+CORS(app)
 
 w3 = Web3(Web3.HTTPProvider('http://127.0.0.1:8545')) # points to the URL provided by Ganache
 w3.eth.defaultAccount = w3.eth.accounts[0]
 
 account_map = {
     'baddamanu@yahoo.com': w3.eth.accounts[1],
-    'Anurag': w3.eth.accounts[1]
+    'Anurag': w3.eth.accounts[2]
 }
 
 with open('./build/contracts/Market.json', 'r') as f:
@@ -36,7 +38,7 @@ def is_fair_price(sku, price):
     max_price = np.max(price_history)
     
     if price < max_price:
-        return true
+        return True
 
     mean = np.mean(price_history)
     std_dev = np.std(price_history)
@@ -52,7 +54,7 @@ def is_hoarding(sku, buyer_id):
      # grab contract
     item = w3.eth.contract(address=contract_address, abi=abi)
 
-    last_order = item.functions.getBuyerHistory(sku, buyer_id).call()
+    last_order = item.functions.getBuyerHistory(sku, account_map[buyer_id]).call()
 
     last_bought = datetime.strptime(last_order)
     current_time = datetime.now()
@@ -74,7 +76,7 @@ def listing():
         item_name = request.args.get('name')
         price = int(request.args.get('price'))
         seller_id = request.args.get('sellerId')
-        is_verified_seller = bool(request.args.get('isVerifiedSeller'))
+        is_verified_seller = request.args.get('isVerifiedSeller') == 'true'
 
         try :
             tx_hash = item.functions.listDigitalGood(
@@ -88,7 +90,6 @@ def listing():
 
             return jsonify({'data': 'worked'}), 200
         except ValueError as e:
-            print(e.__dict__)
             return jsonify({'data': str(e)}), 200
         
     else:
@@ -97,7 +98,8 @@ def listing():
         price = int(request.args.get('price'))
         quantity = int(request.args.get('quantity'))
         seller_id = request.args.get('sellerId')
-        is_verified_seller = bool(request.args.get('isVerifiedSeller'))
+        # print(request.args.get('isVerifiedSeller'))
+        is_verified_seller = request.args.get('isVerifiedSeller') == 'true'
         fair_price = bool(is_fair_price(sku, price))
 
         # item = w3.eth.contract(address=contract_address, abi=abi)
@@ -114,23 +116,31 @@ def listing():
         # print('mean: ' + str(mean))
         # print('std_dev: ' + str(std_dev))
 
+        # print("is_verified_seller: " + str(is_verified_seller))
         # print("fair_price: " + str(fair_price))
+        # print(str(not is_verified_seller and not fair_price))
 
-        if not fair_price and not is_verified_seller:
-            return jsonify({'data': 'does not work'}), 200
+        # if not is_verified_seller and not fair_price:
+        #     return jsonify({'data': 'does not work'}), 200
 
-        tx_hash = item.functions.listPhysicalGood(
-            sku, 
-            item_name,
-            price,
-            quantity,
-            seller_id,
-            is_verified_seller,
-            fair_price).transact()
+        # if is_verified_seller:
+        try :
+            tx_hash = item.functions.listPhysicalGood(
+                sku, 
+                item_name,
+                price,
+                quantity,
+                account_map[seller_id],
+                is_verified_seller,
+                fair_price).transact()
 
-        w3.eth.waitForTransactionReceipt(tx_hash)
+            w3.eth.waitForTransactionReceipt(tx_hash)
 
-    return jsonify({'data': 'none'}), 200
+            return jsonify({'data': 'worked'}), 200
+        except ValueError as e:
+            return jsonify({'data': str(e)}), 200
+        # elif not fair_price:
+        #     return jsonify({'data': 'does not work'}), 200
 
 @app.route('/buy', methods=['POST'])
 def buy():
@@ -158,14 +168,16 @@ def buy():
         buyer_id = request.args.get('buyerId')
         item_name = request.args.get('name')
 
-        if is_hoarding(sku, buyer_id):
-            return jsonify({'data': 'none'}), 200
+        # if is_hoarding(sku, buyer_id):
+        #     return jsonify({'data': 'none'}), 200
+        if quantity > 2:
+            return jsonify({'data': 'Hoarding item.'}), 200
 
         tx_hash = item.functions.buyPhysicalGood(
             sku,
-            quantity,
-            buyer_id,
             item_name,
+            quantity,
+            account_map[buyer_id],
             curr_time).transact()
 
         w3.eth.waitForTransactionReceipt(tx_hash)

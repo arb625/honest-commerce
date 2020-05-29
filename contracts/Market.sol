@@ -231,7 +231,7 @@ contract Market {
         }
     }
 
-    function buyPhysicalGood(string memory sku, uint quantity, address buyerId, string memory time) public {
+    function buyPhysicalGood(string memory sku, string memory _name, uint quantity, address buyerId, string memory time) public {
         require(quantity > 0, "Quantity cannot be negative or zero.");
         require(quantity <= 2, "Please take less than 2 items.");
 
@@ -332,13 +332,15 @@ contract Market {
         return (allocatedIds, names);
     }
 
-    function getPhysicalGoods() public returns(string[] memory, string[] memory) {
+    function getPhysicalGoods() public returns(string[] memory, string[] memory, uint[] memory) {
         string[] memory names = new string[](skus.length);
+        uint[] memory quantities = new uint[](skus.length);
 
         for (uint i = 0; i < skus.length; i++) {
             names[i] = physicalGoods[skus[i]].name;
+            quantities[i] = physicalGoods[skus[i]].quantity;
         }
 
-        return (skus, names);
+        return (skus, names, quantities);
     }
 }
