@@ -1,12 +1,12 @@
 import json, sys
 from web3 import Web3
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+# from flask_cors import CORS
 import numpy as np
 from datetime import datetime
 
 app = Flask(__name__)
-CORS(app)
+# CORS(app)
 
 w3 = Web3(Web3.HTTPProvider('http://127.0.0.1:8545')) # points to the URL provided by Ganache
 w3.eth.defaultAccount = w3.eth.accounts[0]
@@ -50,18 +50,21 @@ def is_fair_price(sku, price):
 
     return price <= mean + 1.5 * std_dev
 
-def is_hoarding(sku, buyer_id):
+def is_hoarding(sku, buyer_id, quantity):
+    if quantity > 2:
+        return True
      # grab contract
-    item = w3.eth.contract(address=contract_address, abi=abi)
+    # item = w3.eth.contract(address=contract_address, abi=abi)
 
-    last_order = item.functions.getBuyerHistory(sku, account_map[buyer_id]).call()
+    # last_order = item.functions.getBuyerHistory(sku, account_map[buyer_id]).call()
 
-    last_bought = datetime.strptime(last_order)
-    current_time = datetime.now()
+    # last_bought = datetime.strptime(last_order, "%Y-%m-%d %H:%M:%S.%f")
+    # current_time = datetime.strptime(datetime.now(), "%Y-%m-%d %H:%M:%S.%f")
 
-    difference = current_time - last_bought
+    # difference = current_time - last_bought
 
-    return difference.total_seconds() / 3600 < 2
+    # return difference.total_seconds() < 10
+    return False
 
 @app.route('/list', methods=['POST'])
 def listing():
@@ -168,10 +171,8 @@ def buy():
         buyer_id = request.args.get('buyerId')
         item_name = request.args.get('name')
 
-        # if is_hoarding(sku, buyer_id):
-        #     return jsonify({'data': 'none'}), 200
-        if quantity > 2:
-            return jsonify({'data': 'Hoarding item.'}), 200
+        if is_hoarding(sku, buyer_id, quantity):
+            return jsonify({'data': 'Hoarding is being done.'}), 200
 
         tx_hash = item.functions.buyPhysicalGood(
             sku,

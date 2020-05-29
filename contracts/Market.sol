@@ -247,9 +247,16 @@ contract Market {
                 good.quantity -= quantity;
             }
 
-            Buyer storage buyer = buyers[buyerId];
-            buyer.orderHistory[sku] = time;
+            // Buyer storage buyer = buyers[buyerId];
+            buyers[buyerId].orderHistory[sku] = time;
         } else {
+            buyers[buyerId] = Buyer({
+                id: buyerId,
+                init: true
+            });
+
+            buyers[buyerId].orderHistory[sku] = time;
+
             PhysicalGood storage good = physicalGoods[sku];
             require(good.quantity >= quantity, "Buying too much quantity");
             
@@ -260,13 +267,6 @@ contract Market {
             } else {
                 good.quantity -= quantity;
             }
-
-            buyers[buyerId] = Buyer({
-                id: buyerId,
-                init: true
-            });
-
-            buyers[buyerId].orderHistory[sku] = time;
         }
     }
 
@@ -317,8 +317,8 @@ contract Market {
     }
 
     function getBuyerHistory(string memory sku, address buyerId) public returns(string memory) {
-        require(buyers[buyerId].init, "Buyer doesn't exist.");
-
+        // require(buyers[buyerId].init, "Buyer doesn't exist.");
+    
         return buyers[buyerId].orderHistory[sku];
     }
 
