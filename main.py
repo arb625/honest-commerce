@@ -6,7 +6,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-w3 = Web3(Web3.HTTPProvider('http://127.0.0.1:7545')) # points to the URL provided by Ganache
+w3 = Web3(Web3.HTTPProvider('http://127.0.0.1:8545')) # points to the URL provided by Ganache
 w3.eth.defaultAccount = w3.eth.accounts[0]
 
 with open('./build/contracts/Market.json', 'r') as f:
@@ -44,7 +44,7 @@ def is_hoarding(sku, buyer_id):
 
     last_order = item.functions.getBuyerHistory(sku, buyer_id).call()
 
-    last_bought = datetime.strptime(last_order.bought)
+    last_bought = datetime.strptime(last_order)
     current_time = datetime.now()
 
     difference = current_time - last_bought
@@ -64,10 +64,11 @@ def listing():
         item_name = request.args.get('name')
         price = int(request.args.get('price'))
         seller_id = request.args.get('sellerId')
-        is_verified_seller = request.args.get('isVerifiedSeller')
+        is_verified_seller = bool(request.args.get('isVerifiedSeller'))
 
         tx_hash = item.functions.listDigitalGood(
             ticket_id, 
+            item_name,
             price,
             seller_id,
             is_verified_seller).transact()
@@ -77,10 +78,10 @@ def listing():
         sku = request.args.get('sku')
         item_name = request.args.get('name')
         price = int(request.args.get('price'))
-        quantity = request.args.get('quantity')
+        quantity = int(request.args.get('quantity'))
         seller_id = request.args.get('sellerId')
-        is_verified_seller = request.args.get('isVerifiedSeller')
-        fair_price = is_fair_price(sku, price)
+        is_verified_seller = bool(request.args.get('isVerifiedSeller'))
+        fair_price = bool(is_fair_price(sku, price))
 
         tx_hash = item.functions.listPhysicalGood(
             sku, 
@@ -117,11 +118,11 @@ def buy():
         w3.eth.waitForTransactionReceipt(tx_hash)
     else:
         sku = request.args.get('sku')
-        quantity = request.args.get('quantity')
+        quantity = int(request.args.get('quantity'))
         buyer_id = request.args.get('buyerId')
 
         if is_hoarding(sku, buyer_id):
-            return return jsonify({'data': 'none'}), 200
+            return jsonify({'data': 'none'}), 200
 
         tx_hash = item.functions.buyPhysicalGood(
             sku,
